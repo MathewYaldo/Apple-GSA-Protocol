@@ -23,7 +23,7 @@ The first step in obtaining the web traffic would be to intercept the SSL pinnin
 
 ## Python Script
 
-The python script in this repository can successfully execute one of the first steps towards proper authentication via the GSA protocol (getting the M1), but it may not provide much help in getting past any further for reasons explained below. Nevertheless, the first step can be considered complete and this provides a nice overview of how some parameters such as the a2k are generated.
+The python script in this repository can successfully execute one of the first steps towards proper authentication via the GSA protocol (getting s, B to make the M1 parameter as well as getting the c parameter), but it may not provide much help in getting past any further for reasons explained below. Nevertheless, the first step can be considered complete and this provides a nice overview of how some parameters such as the a2k are generated.
 
 Note: If you're going to utilize this Python script, please be sure to modify some of the other parameters under cpd, also known as the Anisette data. This includes X-Mme-Device-Id (Device UDID) and X-Apple-I-SRL-NO (Device Serial Number) to name a few.
 
