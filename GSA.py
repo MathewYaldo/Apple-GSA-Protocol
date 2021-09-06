@@ -13,7 +13,6 @@ def GSA_authenticate(username, password):
 
 	# Create the a2k section of the plist payload.
 	a2k_data = srp.create_salted_verification_key(username, password, hash_alg=srp.SHA256, ng_type=srp.NG_2048)
-	a2k = base64.b64encode(a2k_data[1]).decode("utf-8")
 	time = datetime.utcnow().isoformat()[:-7]+'Z'
 
 	# Request headers for Apple's GSA API.
@@ -29,92 +28,55 @@ def GSA_authenticate(username, password):
 
 	url = "https://gsa.apple.com/grandslam/GsService2"
 
-	data = """<?xml version="1.0" encoding="UTF-8"?>
-				<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-				<plist version="1.0">
-				<dict>
-					<key>Header</key>
-					<dict>
-						<key>Version</key>
-						<string>1.0.1</string>
-					</dict>
-					<key>Request</key>
-					<dict>
-						<key>A2k</key>
-						<data>
-						"""+a2k+"""
-						</data>
-						<key>cpd</key>
-						<dict>
-							<key>AppleIDClientIdentifier</key>
-							<string>D4B7512F-E841-4AEA-A569-4F1E84738182</string>
-							<key>X-Apple-I-Client-Time</key>
-							<string>"""+time+"""</string>
-							<key>X-Apple-I-MD</key>
-							<string>AAAABQAAABCMMt6qegoLwK7/SjhV8/XQAAAAAw==</string>
-							<key>X-Apple-I-MD-M</key>
-							<string>BvleDr7BzY/U0+RwcEwPJiikBNW9J69y8qtmJi1xrzXVwz+iTq5fZWSA2S+9ssE3dDpMpuXCxsWQ/at1</string>
-							<key>X-Apple-I-MD-RINFO</key>
-							<string>17106176</string>
-							<key>X-Apple-I-SRL-NO</key>
-							<string>C39L80JCFNJT</string>
-							<key>X-Mme-Device-Id</key>
-							<string>2c7a7a35e0a441245fbf7e2c5cad03fce2dca5d8</string>
-							<key>bootstrap</key>
-							<true/>
-							<key>capp</key>
-							<string>AppStore</string>
-							<key>ckgen</key>
-							<true/>
-							<key>dc</key>
-							<string>#d4c5b3</string>
-							<key>dec</key>
-							<string>#e1e4e3</string>
-							<key>loc</key>
-							<string>en_US</string>
-							<key>pbe</key>
-							<false/>
-							<key>prtn</key>
-							<string>ME349</string>
-							<key>svct</key>
-							<string>iTunes</string>
-						</dict>
-						<key>o</key>
-						<string>init</string>
-						<key>ps</key>
-						<array>
-							<string>s2k</string>
-							<string>s2k_fo</string>
-						</array>
-						<key>u</key>
-						<string>"""+username+"""</string>
-					</dict>
-				</dict>
-				</plist>"""
+	data_obj = {
+		"Header": {
+			"Version": "1.0.1"
+		},
+		"Request": {
+			"A2k": a2k_data,
+			"cpd": {
+				"AppleIDClientIdentifier": "D4B7512F-E841-4AEA-A569-4F1E84738182",
+				"X-Apple-I-Client-Time": time,
+				"X-Apple-I-MD": "AAAABQAAABCMMt6qegoLwK7/SjhV8/XQAAAAAw==",
+				"X-Apple-I-MD-M": "BvleDr7BzY/U0+RwcEwPJiikBNW9J69y8qtmJi1xrzXVwz+iTq5fZWSA2S+9ssE3dDpMpuXCxsWQ/at1",
+				"X-Apple-I-MD-RINFO": "17106176",
+				"X-Apple-I-SRL-NO": "C39L80JCFNJT",
+				"X-Mme-Device-Id": "2c7a7a35e0a441245fbf7e2c5cad03fce2dca5d8",
+				"bootstrap": True,
+				"capp": "AppStore",
+				"ckgen": True,
+				"dc": "#d4c5b3",
+				"dec": "#e1e4e3",
+				"loc": "en_US",
+				"pbe": False,
+				"prtn": "ME349",
+				"svct": "iTunes"
+			},
+			"o": "init",
+			"ps": ["s2k", "s2k_fo"],
+			"u": username
+		}
+	}
+	data = plistlib.dumps(data_obj).decode("utf-8")
 
 	r = requests.post(url, data=data, headers=headers, verify=False)
 	content = r.content
 	pl = plistlib.loads(content)
 	
-	#print(content) #uncomment this to print out the output.
-	
 	# Extract s and B from request.
-	s_b64 =  base64.b64encode(pl["Response"]["s"]).decode("utf-8")
-	B_b64 =  base64.b64encode(pl["Response"]["B"]).decode("utf-8")
+	s_b64 = base64.b64encode(pl["Response"]["s"]).decode("utf-8")
+	B_b64 = base64.b64encode(pl["Response"]["B"]).decode("utf-8")
 	
-	#Extract c parameter which is used in subsequent header.
+	# Extract c parameter which is used in subsequent header.
 	c = pl["Response"]["c"]
 
 
-	#Build M1 
+	# Build M1
 	s = base64.b64decode(s_b64)
 	B = base64.b64decode(B_b64)
 	
 	usr = srp.User( username, password, hash_alg=srp.SHA256, ng_type=srp.NG_2048 )
-	M1 = usr.process_challenge( s, B )
-	M1 = base64.b64encode(M1).decode("utf-8")
-	
-	print("M1: "+M1)
+	M1 = usr.process_challenge(s, B)
 
 
 
@@ -131,79 +93,35 @@ def GSA_authenticate(username, password):
 
 	time = datetime.utcnow().isoformat()[:-7]+'Z'
 
-
-	data2 = """<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>Header</key>
-	<dict>
-		<key>Version</key>
-		<string>1.0.1</string>
-	</dict>
-	<key>Request</key>
-	<dict>
-		<key>M1</key>
-		<data>
-		"""+M1+"""
-		</data>
-		<key>c</key>
-		<string>"""+c+"""</string>
-		<key>cpd</key>
-		<dict>
-			<key>AppleIDClientIdentifier</key>
-			<string>D4B7512F-E841-4AEA-A569-4F1E84738182</string>
-			<key>X-Apple-I-Client-Time</key>
-			<string>"""+time+"""</string>
-			<key>X-Apple-I-MD</key>
-			<string>AAAABQAAABCMMt6qegoLwK7/SjhV8/XQAAAAAw==</string>
-			<key>X-Apple-I-MD-M</key>
-			<string>BvleDr7BzY/U0+RwcEwPJiikBNW9J69y8qtmJi1xrzXVwz+iTq5fZWSA2S+9ssE3dDpMpuXCxsWQ/at1</string>
-			<key>X-Apple-I-MD-RINFO</key>
-			<string>17106176</string>
-			<key>X-Apple-I-SRL-NO</key>
-			<string>C39L80JCFNJT</string>
-			<key>X-Mme-Device-Id</key>
-			<string>2c7a7a35e0a441245fbf7e2c5cad03fce2dca5d8</string>
-			<key>bootstrap</key>
-			<true/>
-			<key>capp</key>
-			<string>AppStore</string>
-			<key>ckgen</key>
-			<true/>
-			<key>dc</key>
-			<string>#d4c5b3</string>
-			<key>dec</key>
-			<string>#e1e4e3</string>
-			<key>loc</key>
-			<string>en_US</string>
-			<key>pbe</key>
-			<false/>
-			<key>prtn</key>
-			<string>ME349</string>
-			<key>svct</key>
-			<string>iTunes</string>
-		</dict>
-		<key>o</key>
-		<string>complete</string>
-		<key>u</key>
-		<string>"""+username+"""</string>
-	</dict>
-</dict>
-</plist>"""
-
-
-
+	data2 = {
+		"Header": {
+			"Version": "1.0.1"
+		},
+		"Request": {
+			"M1": M1,
+			"c": c,
+			"cpd": {
+				"AppleIDClientIdentifier": "D4B7512F-E841-4AEA-A569-4F1E84738182",
+				"X-Apple-I-Client-Time": time,
+				"X-Apple-I-MD": "AAAABQAAABCMMt6qegoLwK7/SjhV8/XQAAAAAw==",
+				"X-Apple-I-MD-M": "BvleDr7BzY/U0+RwcEwPJiikBNW9J69y8qtmJi1xrzXVwz+iTq5fZWSA2S+9ssE3dDpMpuXCxsWQ/at1",
+				"X-Apple-I-MD-RINFO": "17106176",
+				"X-Apple-I-SRL-NO": "C39L80JCFNJT",
+				"X-Mme-Device-Id": "2c7a7a35e0a441245fbf7e2c5cad03fce2dca5d8",
+				"bootstrap": True,
+				"capp": "AppStore",
+				"ckgen": True,
+				"dc": "#d4c5b3",
+				"dec": "#e1e4e3",
+				"loc": "en_US",
+				"pbe": False,
+				"prtn": "ME349",
+				"svct": "iTunes"
+			},
+			"o": "complete",
+			"u": username
+		}
+	}
 
 	r = requests.post(url, data=data2, headers=headers, verify=False)
-	content = r.content
-	#print(content) #uncomment this to print out the output. Will currently result in invalid Apple ID / Password message.
-
-
-
-
-
-
-
-
-GSA_authenticate("EMAIL HERE", "PASSWORD HERE")
+	return r.content
