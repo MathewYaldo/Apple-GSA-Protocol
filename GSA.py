@@ -93,7 +93,7 @@ def GSA_authenticate(username, password):
 
 	time = datetime.utcnow().isoformat()[:-7]+'Z'
 
-	data2 = {
+	data2_obj = {
 		"Header": {
 			"Version": "1.0.1"
 		},
@@ -122,6 +122,7 @@ def GSA_authenticate(username, password):
 			"u": username
 		}
 	}
+	data2 = plistlib.dumps(data2_obj).decode("utf-8")
 
 	r = requests.post(url, data=data2, headers=headers, verify=False)
 	return r.content
